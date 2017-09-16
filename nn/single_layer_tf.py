@@ -49,7 +49,8 @@ def get_accuracies(session, predict, x, y, x_val, y_val):
         x: x_val,
         y: y_val,
     })
-    error = predictions == y_val
+
+    error = predictions == np.argmax(y_val, axis=1)
     return np.mean(error)
 
 
