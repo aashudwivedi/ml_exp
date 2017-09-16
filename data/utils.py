@@ -1,6 +1,5 @@
-import math
 import numpy as np
-import tensorflow as tf
+from sklearn.model_selection import train_test_split
 
 
 def append_bias(data):
@@ -18,13 +17,8 @@ def to_onehot(targets):
 
 def get_train_test(data, target, fraction):
     """ data and target length should be same"""
-    length = data.shape[0]
-    test_size = math.floor(length * fraction)
-    train_size = length - test_size
-    split = [train_size, test_size]
-    train_data, test_data = tf.split(data, split, axis=0)
-    train_target, test_target = tf.split(target, split, axis=1)
-    return train_data, train_target, test_data, test_target
+    # TODO: perform the test train split inside the tensorflow graph
+    return train_test_split(data, target, test_size=fraction,)
 
 
 

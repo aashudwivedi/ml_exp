@@ -25,7 +25,7 @@ def get_processed_iris_data():
 def classify():
     data, target = get_processed_iris_data()
     # 10 percent testing set
-    train_x, train_y, test_x, test_y = data_utils.get_train_test(
+    train_x, test_x, train_y, test_y = data_utils.get_train_test(
         data, target, 0.1)
     single_layer_tf.run_sgd(train_x, train_y, test_x, test_y)
 
