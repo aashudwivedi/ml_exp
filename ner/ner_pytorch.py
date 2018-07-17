@@ -38,24 +38,19 @@ class BiLSTMModel(nn.Module):
         self.hidden2tag = nn.Linear(n_hidden_rnn, n_tags)
         self.h, self.c = self.init_hidden()
 
-    def init_hidden(self):
+    def init_hidden(self, batch_size=32):
         # axis semantics : num_layers, minibatch_size, hidden_dim
-        h = torch.zeros(1, 32, self.hidden_dim)
-        c = torch.zeros(1, 32, self.hidden_dim)
+        h = torch.zeros(1, batch_size, self.hidden_dim)
+        c = torch.zeros(1, batch_size, self.hidden_dim)
         return h, c
 
     def forward(self, input_batch):
         embeds = self.word_embeddings(input_batch)
         x = embeds.view(input_batch.shape[1], input_batch.shape[0], -1)
-        print_debug('x embeds shape = {}, dtype = {}'.format(x.shape, x.dtype))
         lstm_out, (self.h, self.c) = self.lstm(x,
                                                (self.h, self.c))
-        print_debug('lstm_out shape {}'.format(lstm_out.shape))
         tag_space = self.hidden2tag(lstm_out.view(-1, self.hidden_dim))
-        print_debug('tag_space shape {}, dtype = {}'.format(
-            tag_space.shape, tag_space.dtype))
-        log_probs = F.log_softmax(tag_space, dim=1)  # logits
-        print_debug('log probs shape {}'.format(log_probs.shape))
+        log_probs = F.log_softmax(tag_space, dim=1)
         return log_probs
 
 
@@ -68,30 +63,23 @@ model = BiLSTMModel(
 )
 
 loss_func = nn.NLLLoss()
-# loss_func = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
 for epoch in range(n_epochs):
+    print('-' * 10 + 'Epoch {}'.format(epoch) +
+          'of {}'.format(n_epochs) + '-' * 10)
+
     for x_batch, y_batch, lengths in data.batches_generator(
             batch_size, data.train_tokens, data.train_tags):
-
-        print_debug('epoch')
         x_batch = torch.from_numpy(x_batch.astype('int64'))
         y_batch = torch.from_numpy(y_batch.astype('int64'))
-        print_debug('x.shape = {}, y.shape = {}'.format(x_batch.shape, y_batch.shape))
 
         model.zero_grad()
-        model.hidden = model.init_hidden()
-        print_debug('h shape = {}, c shape = {}'.format(model.hidden[0].shape, model.hidden[1].shape))
+        model.h, model.c = model.init_hidden(batch_size=x_batch.shape[0])
         scores = model(x_batch)
-        print_debug('scores shape = {}'.format(scores.shape))
-        print_debug('y_batch shape = {}'.format(y_batch.shape))
-        # preds = torch.argmax(scores, dim=1).reshape(y_batch.shape)
-        preds = scores
-        print_debug('precs shape = {}'.format(preds.shape))
-        print_debug('dtypes preds = {}, dtypes y_batch = {}'.format(preds.dtype, y_batch.dtype))
-        loss = loss_func(preds, y_batch.reshape(y_batch.shape[0] * y_batch.shape[1]))
-        loss.backward(retain_graph=True)
+        loss = loss_func(scores, y_batch.reshape(
+            y_batch.shape[0] * y_batch.shape[1]))
+        loss.backward()
         optimizer.step()
 
     learning = learning_rate / learning_rate_decay
