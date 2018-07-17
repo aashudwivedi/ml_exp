@@ -10,11 +10,17 @@ from evaluation import precision_recall_f1
 
 data = utils.Data()
 
+DEBUG = True
 batch_size = 32
 n_epochs = 4
 learning_rate = 0.005
 learning_rate_decay = np.sqrt(2)
 dropout_keep_probability = 0.5
+
+
+def print_debug(msg):
+    if DEBUG:
+        print(msg)
 
 
 class BiLSTMModel(nn.Module):
@@ -41,15 +47,15 @@ class BiLSTMModel(nn.Module):
     def forward(self, input_batch):
         embeds = self.word_embeddings(input_batch)
         x = embeds.view(input_batch.shape[1], input_batch.shape[0], -1)
-        print('x embeds shape = {}, dtype = {}'.format(x.shape, x.dtype))
+        print_debug('x embeds shape = {}, dtype = {}'.format(x.shape, x.dtype))
         lstm_out, (self.h, self.c) = self.lstm(x,
                                                (self.h, self.c))
-        print('lstm_out shape {}'.format(lstm_out.shape))
+        print_debug('lstm_out shape {}'.format(lstm_out.shape))
         tag_space = self.hidden2tag(lstm_out.view(-1, self.hidden_dim))
-        print('tag_space shape {}, dtype = {}'.format(
+        print_debug('tag_space shape {}, dtype = {}'.format(
             tag_space.shape, tag_space.dtype))
         log_probs = F.log_softmax(tag_space, dim=1)  # logits
-        print('log probs shape {}'.format(log_probs.shape))
+        print_debug('log probs shape {}'.format(log_probs.shape))
         return log_probs
 
 
@@ -69,21 +75,21 @@ for epoch in range(n_epochs):
     for x_batch, y_batch, lengths in data.batches_generator(
             batch_size, data.train_tokens, data.train_tags):
 
-        print('epoch')
+        print_debug('epoch')
         x_batch = torch.from_numpy(x_batch.astype('int64'))
         y_batch = torch.from_numpy(y_batch.astype('int64'))
-        print('x.shape = {}, y.shape = {}'.format(x_batch.shape, y_batch.shape))
+        print_debug('x.shape = {}, y.shape = {}'.format(x_batch.shape, y_batch.shape))
 
         model.zero_grad()
         model.hidden = model.init_hidden()
-        print('h shape = {}, c shape = {}'.format(model.hidden[0].shape, model.hidden[1].shape))
+        print_debug('h shape = {}, c shape = {}'.format(model.hidden[0].shape, model.hidden[1].shape))
         scores = model(x_batch)
-        print('scores shape = {}'.format(scores.shape))
-        print('y_batch shape = {}'.format(y_batch.shape))
+        print_debug('scores shape = {}'.format(scores.shape))
+        print_debug('y_batch shape = {}'.format(y_batch.shape))
         # preds = torch.argmax(scores, dim=1).reshape(y_batch.shape)
         preds = scores
-        print('precs shape = {}'.format(preds.shape))
-        print('dtypes preds = {}, dtypes y_batch = {}'.format(preds.dtype, y_batch.dtype))
+        print_debug('precs shape = {}'.format(preds.shape))
+        print_debug('dtypes preds = {}, dtypes y_batch = {}'.format(preds.dtype, y_batch.dtype))
         loss = loss_func(preds, y_batch.reshape(y_batch.shape[0] * y_batch.shape[1]))
         loss.backward(retain_graph=True)
         optimizer.step()
